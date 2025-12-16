@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>배달 수입 관리</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      color: white;
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    
+    .stat-label {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      margin-bottom: 25px;
+    }
+    
+    .card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    label {
+      display: block;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    
+    input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .btn:active {
+      transform: scale(0.98);
+    }
+    
+    .record-list {
+      margin-top: 20px;
+    }
+    
+    .record-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .record-info {
+      flex: 1;
+    }
+    
+    .record-date {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    
+    .record-details {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    
+    .btn-delete {
+      background: #ff4757;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 20px 0;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+    
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚗 배달 수입 관리</h1>
+    
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">총 배달 건수</div>
+        <div class="stat-value" id="totalDeliveries">0건</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">총 수입</div>
+        <div class="stat-value" id="totalIncome">0원</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">총 운행 시간</div>
+        <div class="stat-value" id="totalHours">0시간</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">건당 평균</div>
+        <div class="stat-value" id="avgPerDelivery">0원</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">일평균 수입</div>
+        <div class="stat-value" id="avgDailyIncome">0원</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">시간당 수입</div>
+        <div class="stat-value" id="avgHourlyIncome">0원</div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>➕ 새 기록 추가</h2>
+      <div class="form-group">
+        <label>날짜</label>
+        <input type="date" id="dateInput">
+      </div>
+      <div class="form-group">
+        <label>배달 건수</label>
+        <input type="number" id="deliveriesInput" placeholder="10">
+      </div>
+      <div class="form-group">
+        <label>수입 (원)</label>
+        <input type="number" id="incomeInput" placeholder="69237">
+      </div>
+      <div class="form-group">
+        <label>운행 시간</label>
+        <input type="number" step="0.5" id="hoursInput" placeholder="8">
+      </div>
+      <button class="btn" onclick="addRecord()">기록 추가</button>
+    </div>
+    
+    <div class="card" id="chartSection" style="display: none;">
+      <h2>📊 시간당 수입</h2>
+      <div class="chart-container">
+        <canvas id="hourlyIncomeChart"></canvas>
+      </div>
+    </div>
+    
+    <div class="card" id="recordsSection" style="display: none;">
+      <h2>📋 기록 내역</h2>
+      <div class="record-list" id="recordList"></div>
+    </div>
+    
+    <div class="card" id="emptyState">
+      <div class="empty-state">
+        <div class="empty-state-icon">📦</div>
+        <p style="font-size: 1.2rem;">아직 기록이 없습니다</p>
+        <p style="color: #ccc; margin-top: 10px;">첫 번째 기록을 추가해보세요!</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let records = [];
+    let chart = null;
+    
+    // 로컬 스토리지에서 데이터 불러오기
+    function loadData() {
+      const saved = localStorage.getItem('deliveryRecords');
+      if (saved) {
+        records = JSON.parse(saved);
+        updateUI();
+      }
+    }
+    
+    // 로컬 스토리지에 데이터 저장
+    function saveData() {
+      localStorage.setItem('deliveryRecords', JSON.stringify(records));
+    }
+    
+    // 오늘 날짜를 기본값으로 설정
+    document.getElementById('dateInput').valueAsDate = new Date();
+    
+    // 기록 추가
+    function addRecord() {
+      const date = document.getElementById('dateInput').value;
+      const deliveries = parseInt(document.getElementById('deliveriesInput').value);
+      const income = parseInt(document.getElementById('incomeInput').value);
+      const hours = parseFloat(document.getElementById('hoursInput').value);
+      
+      if (!date || !deliveries || !income || !hours || deliveries <= 0 || income <= 0 || hours <= 0) {
+        alert('모든 항목을 올바르게 입력해주세요');
+        return;
+      }
+      
+      const record = {
+        id: Date.now(),
+        date,
+        deliveries,
+        income,
+        hours
+      };
+      
+      records.unshift(record);
+      saveData();
+      updateUI();
+      
+      // 입력 필드 초기화
+      document.getElementById('deliveriesInput').value = '';
+      document.getElementById('incomeInput').value = '';
+      document.getElementById('hoursInput').value = '';
+      document.getElementById('dateInput').valueAsDate = new Date();
+    }
+    
+    // 기록 삭제
+    function deleteRecord(id) {
+      if (confirm('이 기록을 삭제하시겠습니까?')) {
+        records = records.filter(r => r.id !== id);
+        saveData();
+        updateUI();
+      }
+    }
+    
+    // UI 업데이트
+    function updateUI() {
+      updateStats();
+      updateRecordList();
+      updateChart();
+      
+      if (records.length > 0) {
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('chartSection').style.display = 'block';
+        document.getElementById('recordsSection').style.display = 'block';
+      } else {
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('chartSection').style.display = 'none';
+        document.getElementById('recordsSection').style.display = 'none';
+      }
+    }
+    
+    // 통계 업데이트
+    function updateStats() {
+      const totalDeliveries = records.reduce((sum, r) => sum + r.deliveries, 0);
+      const totalIncome = records.reduce((sum, r) => sum + r.income, 0);
+      const totalHours = records.reduce((sum, r) => sum + r.hours, 0);
+      
+      document.getElementById('totalDeliveries').textContent = totalDeliveries + '건';
+      document.getElementById('totalIncome').textContent = totalIncome.toLocaleString() + '원';
+      document.getElementById('totalHours').textContent = totalHours + '시간';
+      
+      const avgPerDelivery = totalDeliveries > 0 ? Math.round(totalIncome / totalDeliveries) : 0;
+      const avgDailyIncome = records.length > 0 ? Math.round(totalIncome / records.length) : 0;
+      const avgHourlyIncome = totalHours > 0 ? Math.round(totalIncome / totalHours) : 0;
+      
+      document.getElementById('avgPerDelivery').textContent = avgPerDelivery.toLocaleString() + '원';
+      document.getElementById('avgDailyIncome').textContent = avgDailyIncome.toLocaleString() + '원';
+      document.getElementById('avgHourlyIncome').textContent = avgHourlyIncome.toLocaleString() + '원';
+    }
+    
+    // 기록 목록 업데이트
+    function updateRecordList() {
+      const listEl = document.getElementById('recordList');
+      listEl.innerHTML = '';
+      
+      records.forEach(record => {
+        const hourlyIncome = Math.round(record.income / record.hours);
+        const item = document.createElement('div');
+        item.className = 'record-item';
+        item.innerHTML = `
+          <div class="record-info">
+            <div class="record-date">${record.date}</div>
+            <div class="record-details">
+              ${record.deliveries}건 · ${record.income.toLocaleString()}원 · ${record.hours}시간
+              <br>시간당 ${hourlyIncome.toLocaleString()}원
+            </div>
+          </div>
+          <button class="btn-delete" onclick="deleteRecord(${record.id})">삭제</button>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+    
+    // 차트 업데이트
+    function updateChart() {
+      const ctx = document.getElementById('hourlyIncomeChart');
+      
+      if (chart) {
+        chart.destroy();
+      }
+      
+      const sortedRecords = [...records].reverse();
+      const data = sortedRecords.map(r => ({
+        x: r.date,
+        y: Math.round(r.income / r.hours)
+      }));
+      
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: '시간당 수입 (원)',
+            data: data,
+            borderColor: '#667eea',
+            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true
+            }
+          },
+          scales: {
+            x: {
+              type: 'category'
+            },
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    }
+    
+    // 페이지 로드시 데이터 불러오기
+    loadData();
+  </script>
+</body>
+</html>
